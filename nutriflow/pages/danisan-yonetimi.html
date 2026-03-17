@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NutriFlow — Danışan Yönetimi</title>
+  <link rel="stylesheet" href="../css/variables.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    body { background: var(--sage-50); }
+    .app-layout { display: flex; min-height: 100vh; }
+
+    /* Sidebar — same as dashboard */
+    .sidebar { width:var(--sidebar-w); background:var(--charcoal); display:flex; flex-direction:column; position:fixed; top:0; left:0; bottom:0; z-index:50; }
+    .sidebar-header { padding:24px 20px; border-bottom:1px solid rgba(255,255,255,0.07); display:flex; align-items:center; gap:10px; }
+    .sidebar-logo-icon { width:34px; height:34px; background:var(--primary); border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+    .sidebar-logo-text { font-family:var(--font-display); font-size:20px; font-weight:600; color:white; }
+    .sidebar-logo-text span { color:var(--sage-400); }
+    .sidebar-nav { flex:1; padding:16px 12px; overflow-y:auto; }
+    .nav-section-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:1.5px; color:rgba(255,255,255,0.3); padding:0 8px; margin:16px 0 6px; }
+    .nav-section-label:first-child { margin-top:0; }
+    .nav-item { display:flex; align-items:center; gap:10px; padding:10px; border-radius:var(--radius-md); color:rgba(255,255,255,0.6); font-size:14px; font-weight:500; transition:all var(--t-fast); cursor:pointer; text-decoration:none; }
+    .nav-item:hover { background:rgba(255,255,255,0.07); color:rgba(255,255,255,0.9); }
+    .nav-item.active { background:var(--primary); color:white; }
+    .nav-icon { width:18px; text-align:center; font-size:15px; flex-shrink:0; }
+    .nav-badge { margin-left:auto; background:var(--accent); color:white; font-size:10px; font-weight:600; padding:2px 7px; border-radius:var(--radius-full); }
+    .nav-item.active .nav-badge { background:rgba(255,255,255,0.25); }
+    .sidebar-footer { padding:12px; border-top:1px solid rgba(255,255,255,0.07); }
+    .sidebar-user { display:flex; align-items:center; gap:10px; padding:10px; border-radius:var(--radius-md); cursor:pointer; }
+    .sidebar-user:hover { background:rgba(255,255,255,0.07); }
+    .user-avatar { width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,var(--sage-400),var(--sage-600)); display:flex; align-items:center; justify-content:center; font-weight:600; font-size:13px; color:white; flex-shrink:0; }
+    .user-info { flex:1; min-width:0; }
+    .user-name { font-size:13px; font-weight:600; color:white; }
+    .user-role { font-size:11px; color:rgba(255,255,255,0.45); }
+
+    .main-content { flex:1; margin-left:var(--sidebar-w); display:flex; flex-direction:column; }
+    .topbar { height:64px; background:var(--surface); border-bottom:1px solid var(--border-light); display:flex; align-items:center; justify-content:space-between; padding:0 28px; position:sticky; top:0; z-index:40; box-shadow:var(--shadow-sm); }
+    .topbar-title { font-size:18px; font-weight:600; }
+    .topbar-subtitle { font-size:13px; color:var(--text-muted); }
+    .topbar-right { display:flex; align-items:center; gap:10px; }
+    .topbar-btn { width:38px; height:38px; border-radius:var(--radius-md); background:var(--sage-50); border:1px solid var(--border-light); display:flex; align-items:center; justify-content:center; font-size:16px; cursor:pointer; transition:all var(--t-fast); }
+    .topbar-btn:hover { background:var(--sage-100); }
+    .notif-dot { position:absolute; top:6px; right:6px; width:7px; height:7px; border-radius:50%; background:var(--danger); border:1.5px solid white; }
+
+    .page-body { padding:28px; flex:1; }
+
+    /* ─── TOOLBAR ─── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-full);
+      padding: 10px 18px;
+      flex: 1;
+      min-width: 200px;
+      max-width: 360px;
+      transition: all var(--t-fast);
+    }
+    .search-box:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(84,138,72,0.1); }
+    .search-box input { border: none; outline: none; font-size: 14px; color: var(--text); background: transparent; width: 100%; }
+    .filter-select {
+      padding: 10px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-full);
+      font-size: 13px;
+      color: var(--text);
+      background: white;
+      cursor: pointer;
+      outline: none;
+    }
+    .filter-select:focus { border-color: var(--primary); }
+    .view-toggle {
+      display: flex;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-full);
+      overflow: hidden;
+    }
+    .view-btn {
+      padding: 9px 14px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all var(--t-fast);
+      border: none;
+      background: transparent;
+    }
+    .view-btn.active { background: var(--primary); color: white; }
+
+    /* ─── PATIENTS GRID ─── */
+    .patients-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .patient-card {
+      background: white;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      padding: 22px;
+      transition: all var(--t-mid);
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    .patient-card::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 4px;
+      background: var(--primary);
+      transform: scaleY(0);
+      transform-origin: bottom;
+      transition: transform var(--t-mid) var(--ease-spring);
+      border-radius: 0 2px 2px 0;
+    }
+    .patient-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: var(--sage-200); }
+    .patient-card:hover::before { transform: scaleY(1); }
+
+    .pc-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+    .pc-avatar-wrap { position: relative; }
+    .pc-avatar {
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      color: white;
+    }
+    .pc-online-dot {
+      position: absolute;
+      bottom: 2px; right: 2px;
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: var(--success);
+      border: 2px solid white;
+    }
+    .pc-name { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+    .pc-id { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); }
+    .pc-menu-btn { padding: 4px 8px; border-radius: var(--radius-sm); cursor: pointer; font-size: 16px; color: var(--text-muted); transition: all var(--t-fast); border: none; background: transparent; }
+    .pc-menu-btn:hover { background: var(--sage-50); }
+
+    .pc-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .pc-stat { background: var(--sage-50); border-radius: var(--radius-sm); padding: 8px; text-align: center; }
+    .pc-stat-val { font-size: 15px; font-weight: 700; color: var(--text); }
+    .pc-stat-lbl { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .pc-progress-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-bottom: 5px; }
+    .pc-progress-bar { height: 5px; background: var(--sage-100); border-radius: 99px; overflow: hidden; margin-bottom: 12px; }
+    .pc-progress-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--primary), var(--sage-400)); transition: width 0.8s var(--ease-smooth); }
+
+    .pc-footer { display: flex; align-items: center; justify-content: space-between; }
+    .pc-next-appt { font-size: 11px; color: var(--text-muted); }
+    .pc-next-appt strong { color: var(--text); }
+
+    /* ─── PATIENT DETAIL MODAL ─── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(30,42,26,0.5);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--t-mid);
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal-panel {
+      width: 480px;
+      max-width: 95vw;
+      height: 100vh;
+      background: white;
+      overflow-y: auto;
+      box-shadow: var(--shadow-xl);
+      transform: translateX(100%);
+      transition: transform var(--t-mid) var(--ease-smooth);
+    }
+    .modal-overlay.open .modal-panel { transform: translateX(0); }
+
+    .modal-header {
+      padding: 24px 24px 0;
+      position: sticky;
+      top: 0;
+      background: white;
+      z-index: 1;
+      border-bottom: 1px solid var(--border-light);
+      padding-bottom: 16px;
+    }
+    .modal-header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .modal-close { width: 32px; height: 32px; border-radius: 50%; background: var(--sage-50); border: none; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all var(--t-fast); }
+    .modal-close:hover { background: var(--sage-100); }
+    .modal-patient-info { display: flex; align-items: center; gap: 14px; }
+    .modal-avatar { width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 700; color: white; }
+    .modal-name { font-size: 20px; font-weight: 600; color: var(--text); font-family: var(--font-display); margin-bottom: 3px; }
+    .modal-meta { font-size: 12px; color: var(--text-muted); display: flex; gap: 8px; flex-wrap: wrap; }
+    .modal-tab-list { display: flex; gap: 4px; padding: 0 24px 0; margin: 12px 0 0; overflow-x: auto; }
+    .modal-tab { padding: 8px 14px; border-radius: var(--radius-full); font-size: 13px; font-weight: 500; cursor: pointer; transition: all var(--t-fast); color: var(--text-muted); white-space: nowrap; border: none; background: transparent; }
+    .modal-tab.active { background: var(--sage-100); color: var(--primary); }
+    .modal-tab:hover:not(.active) { background: var(--sage-50); }
+
+    .modal-body { padding: 24px; }
+    .modal-section { margin-bottom: 24px; }
+    .modal-section-title { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .info-field { background: var(--sage-50); border-radius: var(--radius-md); padding: 12px; }
+    .info-lbl { font-size: 11px; color: var(--text-muted); margin-bottom: 3px; }
+    .info-val { font-size: 14px; font-weight: 600; color: var(--text); }
+
+    .measure-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .measure-item { background: var(--sage-50); border-radius: var(--radius-md); padding: 12px; text-align: center; }
+    .measure-val { font-size: 22px; font-weight: 700; color: var(--primary-dark); font-family: var(--font-display); }
+    .measure-unit { font-size: 10px; color: var(--text-muted); }
+    .measure-lbl { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .measure-trend { font-size: 10px; color: var(--success); }
+
+    .appt-history { display: flex; flex-direction: column; gap: 8px; }
+    .appt-hist-item { display: flex; align-items: center; gap: 12px; padding: 10px; background: var(--sage-50); border-radius: var(--radius-md); }
+    .appt-hist-date { font-size: 12px; font-family: var(--font-mono); color: var(--text-muted); min-width: 72px; }
+    .appt-hist-desc { flex: 1; font-size: 13px; color: var(--text); }
+
+    .mini-chart-wrap { height: 140px; margin-top: 8px; }
+
+    .modal-actions { display: flex; gap: 8px; flex-wrap: wrap; padding: 16px 24px; border-top: 1px solid var(--border-light); background: var(--sage-50); position: sticky; bottom: 0; }
+
+    /* ─── TABLE VIEW ─── */
+    .patients-table-wrap { background: white; border: 1px solid var(--border-light); border-radius: var(--radius-lg); overflow: hidden; }
+    .patients-table { width: 100%; border-collapse: collapse; }
+    .patients-table th { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); padding: 14px 16px; text-align: left; background: var(--sage-50); white-space: nowrap; }
+    .patients-table td { padding: 14px 16px; font-size: 13px; color: var(--text); border-bottom: 1px solid var(--border-light); }
+    .patients-table tr:last-child td { border-bottom: none; }
+    .patients-table tbody tr { transition: background var(--t-fast); cursor: pointer; }
+    .patients-table tbody tr:hover { background: var(--sage-50); }
+
+    /* Pagination */
+    .pagination { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-top: 1px solid var(--border-light); background: white; border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+    .pagination-info { font-size: 13px; color: var(--text-muted); }
+    .page-btns { display: flex; gap: 4px; }
+    .page-btn { width: 34px; height: 34px; border-radius: var(--radius-md); font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border-light); background: white; color: var(--text-muted); transition: all var(--t-fast); display: flex; align-items: center; justify-content: center; }
+    .page-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+    .page-btn:hover:not(.active) { background: var(--sage-50); border-color: var(--border); color: var(--text); }
+
+    .toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 9999; }
+
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(-100%); }
+      .main-content { margin-left: 0; }
+      .patients-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="app-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo-icon">🌿</div>
+      <span class="sidebar-logo-text">Nutri<span>Flow</span></span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Ana Menü</div>
+      <a href="dashboard.html" class="nav-item"><span class="nav-icon">📊</span> Dashboard</a>
+      <a href="danisan-yonetimi.html" class="nav-item active"><span class="nav-icon">👥</span> Danışanlar <span class="nav-badge">48</span></a>
+      <a href="randevu.html" class="nav-item"><span class="nav-icon">📅</span> Randevular <span class="nav-badge">3</span></a>
+      <div class="nav-section-label">Klinik</div>
+      <a href="#" class="nav-item"><span class="nav-icon">🥗</span> Beslenme Programları</a>
+      <a href="#" class="nav-item"><span class="nav-icon">📏</span> Ölçüm Takibi</a>
+      <a href="#" class="nav-item"><span class="nav-icon">📚</span> Tarif Kütüphanesi</a>
+      <div class="nav-section-label">İşletme</div>
+      <a href="#" class="nav-item"><span class="nav-icon">💰</span> Gelir & Gider</a>
+      <a href="#" class="nav-item"><span class="nav-icon">📄</span> Raporlar</a>
+      <a href="#" class="nav-item"><span class="nav-icon">🌐</span> Web Sitem</a>
+      <div class="nav-section-label">Sistem</div>
+      <a href="#" class="nav-item"><span class="nav-icon">⚙️</span> Ayarlar</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="user-avatar">DK</div>
+        <div class="user-info">
+          <div class="user-name">Dr. Derya Koç</div>
+          <div class="user-role">Diyetisyen · Pro Plan</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main-content">
+    <header class="topbar">
+      <div>
+        <div class="topbar-title">Danışan Yönetimi</div>
+        <div class="topbar-subtitle">48 aktif danışan</div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-btn" style="position:relative">🔔<div class="notif-dot"></div></div>
+        <div class="user-avatar" style="width:38px;height:38px;font-size:12px;cursor:pointer">DK</div>
+      </div>
+    </header>
+
+    <div class="page-body">
+      <!-- TOOLBAR -->
+      <div class="toolbar animate-fade-up">
+        <div class="search-box">
+          <span>🔍</span>
+          <input type="text" id="searchInput" placeholder="İsim, e-posta veya telefon ara..." oninput="filterPatients()">
+        </div>
+        <select class="filter-select" id="filterStatus" onchange="filterPatients()">
+          <option value="">Tüm Durumlar</option>
+          <option value="aktif">Aktif</option>
+          <option value="beklemede">Beklemede</option>
+          <option value="tamamlandi">Tamamlandı</option>
+        </select>
+        <select class="filter-select" id="filterProgram" onchange="filterPatients()">
+          <option value="">Tüm Programlar</option>
+          <option value="kilo-verme">Kilo Verme</option>
+          <option value="kilo-alma">Kilo Alma</option>
+          <option value="saglikli">Sağlıklı Beslenme</option>
+          <option value="spor">Spor Beslenmesi</option>
+        </select>
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <div class="view-toggle">
+            <button class="view-btn active" id="gridViewBtn" onclick="setView('grid')">⊞</button>
+            <button class="view-btn" id="listViewBtn" onclick="setView('list')">☰</button>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openAddModal()">➕ Yeni Danışan</button>
+        </div>
+      </div>
+
+      <!-- GRID VIEW -->
+      <div class="patients-grid" id="patientsGrid">
+        <!-- Dynamically rendered -->
+      </div>
+
+      <!-- LIST VIEW -->
+      <div id="patientsListWrap" style="display:none">
+        <div class="patients-table-wrap">
+          <table class="patients-table">
+            <thead>
+              <tr>
+                <th>Danışan</th>
+                <th>Yaş/Cinsiyet</th>
+                <th>Program</th>
+                <th>Başlangıç</th>
+                <th>Son Ölçüm</th>
+                <th>Hedef İlerlemesi</th>
+                <th>Durum</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="patientsTbody"></tbody>
+          </table>
+          <div class="pagination">
+            <div class="pagination-info">48 danışandan 1–10 arası</div>
+            <div class="page-btns">
+              <div class="page-btn">‹</div>
+              <div class="page-btn active">1</div>
+              <div class="page-btn">2</div>
+              <div class="page-btn">3</div>
+              <div class="page-btn">5</div>
+              <div class="page-btn">›</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- PATIENT DETAIL MODAL -->
+<div class="modal-overlay" id="patientModal" onclick="closeModal(event)">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <div class="modal-header-top">
+        <span class="badge badge-green" id="modal-status-badge">Aktif</span>
+        <button class="modal-close" onclick="closeModalDirect()">✕</button>
+      </div>
+      <div class="modal-patient-info">
+        <div class="modal-avatar" id="modal-avatar">AY</div>
+        <div>
+          <div class="modal-name" id="modal-name">Ayşe Yılmaz</div>
+          <div class="modal-meta">
+            <span>👤 <span id="modal-age">28 yaş</span></span>
+            <span>⚖️ <span id="modal-weight">72 kg</span></span>
+            <span>📏 <span id="modal-height">165 cm</span></span>
+            <span>📅 <span id="modal-since">3 ay</span></span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-tab-list">
+        <button class="modal-tab active" onclick="switchModalTab(this,'genel')">Genel</button>
+        <button class="modal-tab" onclick="switchModalTab(this,'olcumler')">Ölçümler</button>
+        <button class="modal-tab" onclick="switchModalTab(this,'program')">Program</button>
+        <button class="modal-tab" onclick="switchModalTab(this,'gecmis')">Geçmiş</button>
+      </div>
+    </div>
+
+    <div class="modal-body" id="modal-body-content">
+      <!-- Tab: Genel -->
+      <div id="tab-genel">
+        <div class="modal-section">
+          <div class="modal-section-title">Kişisel Bilgiler</div>
+          <div class="info-grid">
+            <div class="info-field"><div class="info-lbl">Telefon</div><div class="info-val" id="md-phone">0532 123 4567</div></div>
+            <div class="info-field"><div class="info-lbl">E-posta</div><div class="info-val" id="md-email">ayse@mail.com</div></div>
+            <div class="info-field"><div class="info-lbl">Program</div><div class="info-val" id="md-program">Kilo Verme</div></div>
+            <div class="info-field"><div class="info-lbl">Sonraki Randevu</div><div class="info-val" id="md-next">24 Mar 2026</div></div>
+          </div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-section-title">Hedef Durumu</div>
+          <div id="md-goal-bar"></div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-section-title">Notlar</div>
+          <textarea style="width:100%;border:1px solid var(--border);border-radius:var(--radius-md);padding:12px;font-size:13px;color:var(--text);resize:vertical;min-height:80px;background:var(--sage-50);outline:none;font-family:var(--font-body)">Laktoz intoleransı mevcut. Sabah kahvaltısını atladığını belirtti. Egzersiz düzensiz.</textarea>
+        </div>
+      </div>
+
+      <!-- Tab: Ölçümler -->
+      <div id="tab-olcumler" style="display:none">
+        <div class="modal-section">
+          <div class="modal-section-title">Son Ölçümler</div>
+          <div class="measure-grid" id="md-measures"></div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-section-title">Kilo Grafiği</div>
+          <div class="mini-chart-wrap">
+            <canvas id="miniWeightChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Program -->
+      <div id="tab-program" style="display:none">
+        <div class="modal-section">
+          <div class="modal-section-title">Aktif Beslenme Programı</div>
+          <div style="background:var(--sage-50);border-radius:var(--radius-md);padding:16px">
+            <div style="font-size:15px;font-weight:600;margin-bottom:8px" id="md-prog-name">Kilo Verme Programı – 3. Ay</div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--text-muted)">
+              <span>🔥 <strong>1.650 kcal</strong>/gün</span>
+              <span>🥩 <strong>120g</strong> protein</span>
+              <span>🍚 <strong>180g</strong> karbonhidrat</span>
+              <span>🥑 <strong>55g</strong> yağ</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-section">
+          <div class="modal-section-title">Günlük Öğün Planı</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="background:white;border:1px solid var(--border-light);border-radius:var(--radius-md);padding:12px">
+              <div style="font-size:12px;font-weight:600;color:var(--primary);margin-bottom:4px">🌅 Kahvaltı (07:00)</div>
+              <div style="font-size:13px;color:var(--text)">2 yumurta, 1 dilim tam tahıllı ekmek, 1 çorba kaşığı zeytinyağı, salatalık-domates</div>
+            </div>
+            <div style="background:white;border:1px solid var(--border-light);border-radius:var(--radius-md);padding:12px">
+              <div style="font-size:12px;font-weight:600;color:var(--primary);margin-bottom:4px">☀️ Öğle (12:30)</div>
+              <div style="font-size:13px;color:var(--text)">120g tavuk göğsü (ızgara), 1 kase yeşil salata, 3 yemek kaşığı esmer pirinç</div>
+            </div>
+            <div style="background:white;border:1px solid var(--border-light);border-radius:var(--radius-md);padding:12px">
+              <div style="font-size:12px;font-weight:600;color:var(--primary);margin-bottom:4px">🌆 Akşam (19:00)</div>
+              <div style="font-size:13px;color:var(--text)">1 porsiyon sebze çorbası, 100g balık, buharda brokoli</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Geçmiş -->
+      <div id="tab-gecmis" style="display:none">
+        <div class="modal-section">
+          <div class="modal-section-title">Randevu Geçmişi</div>
+          <div class="appt-history">
+            <div class="appt-hist-item">
+              <div class="appt-hist-date">17 Mar 2026</div>
+              <div class="appt-hist-desc">Kontrol · 3. ay değerlendirme</div>
+              <span class="badge badge-green" style="font-size:10px">Tamamlandı</span>
+            </div>
+            <div class="appt-hist-item">
+              <div class="appt-hist-date">17 Şub 2026</div>
+              <div class="appt-hist-desc">Kontrol · 2. ay ölçüm güncellemesi</div>
+              <span class="badge badge-green" style="font-size:10px">Tamamlandı</span>
+            </div>
+            <div class="appt-hist-item">
+              <div class="appt-hist-date">20 Oca 2026</div>
+              <div class="appt-hist-desc">Program revizyonu · Kalori ayarı</div>
+              <span class="badge badge-green" style="font-size:10px">Tamamlandı</span>
+            </div>
+            <div class="appt-hist-item">
+              <div class="appt-hist-date">10 Oca 2026</div>
+              <div class="appt-hist-desc">İlk görüşme · Anamnez ve program hazırlama</div>
+              <span class="badge badge-green" style="font-size:10px">Tamamlandı</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-primary btn-sm" onclick="showToast('Randevu oluşturuluyor...','success')">📅 Randevu Oluştur</button>
+      <button class="btn btn-outline btn-sm" onclick="showToast('Program düzenleme açılıyor...','info')">🥗 Programı Düzenle</button>
+      <button class="btn btn-outline btn-sm" onclick="showToast('Ölçüm girişi açılıyor...','info')">📏 Ölçüm Gir</button>
+      <button class="btn btn-ghost btn-sm" style="margin-left:auto;color:var(--danger)" onclick="showToast('Danışan arşivlendi','warning')">🗑</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+const patients = [
+  {id:'P001',name:'Ayşe Yılmaz',initials:'AY',color:'#548a48',age:28,gender:'K',weight:72,height:165,bmi:26.4,program:'kilo-verme',programLabel:'Kilo Verme',status:'aktif',statusLabel:'Aktif',progress:68,since:'10 Oca 2026',phone:'0532 123 4567',email:'ayse@mail.com',nextAppt:'24 Mar 2026',goal:'65 kg',bodyFat:'31%',muscle:'42.1 kg'},
+  {id:'P002',name:'Mert Kaya',initials:'MK',color:'#b8924a',age:34,gender:'E',weight:88,height:178,bmi:27.8,program:'kilo-verme',programLabel:'Kilo Verme',status:'aktif',statusLabel:'Aktif',progress:30,since:'3 Mar 2026',phone:'0544 987 6543',email:'mert@mail.com',nextAppt:'17 Mar 2026',goal:'80 kg',bodyFat:'24%',muscle:'65.4 kg'},
+  {id:'P003',name:'Selin Çelik',initials:'SÇ',color:'#7aaa6d',age:26,gender:'K',weight:54,height:162,bmi:20.6,program:'saglikli',programLabel:'Sağlıklı Beslenme',status:'aktif',statusLabel:'Aktif',progress:82,since:'5 Kas 2025',phone:'0506 234 5678',email:'selin@mail.com',nextAppt:'28 Mar 2026',goal:'Sağlıklı kalori dengesi',bodyFat:'22%',muscle:'36.2 kg'},
+  {id:'P004',name:'Emre Öztürk',initials:'EÖ',color:'#3e6b34',age:29,gender:'E',weight:76,height:180,bmi:23.5,program:'spor',programLabel:'Spor Beslenmesi',status:'beklemede',statusLabel:'Beklemede',progress:45,since:'1 Şub 2026',phone:'0555 321 6547',email:'emre@mail.com',nextAppt:'20 Mar 2026',goal:'Kas kütlesi artışı',bodyFat:'18%',muscle:'58.8 kg'},
+  {id:'P005',name:'Neslihan Baş',initials:'NB',color:'#ccdfc5',color2:'#2f5227',age:41,gender:'K',weight:80,height:160,bmi:31.3,program:'kilo-verme',programLabel:'Kilo Verme',status:'aktif',statusLabel:'Aktif',progress:22,since:'1 Mar 2026',phone:'0532 567 8901',email:'neslihan@mail.com',nextAppt:'17 Mar 2026',goal:'70 kg',bodyFat:'38%',muscle:'38.6 kg'},
+  {id:'P006',name:'Can Doğan',initials:'CD',color:'#a8c99e',color2:'#2f5227',age:22,gender:'E',weight:65,height:175,bmi:21.2,program:'kilo-alma',programLabel:'Kilo Alma',status:'aktif',statusLabel:'Aktif',progress:55,since:'15 Ara 2025',phone:'0541 654 3210',email:'can@mail.com',nextAppt:'25 Mar 2026',goal:'72 kg',bodyFat:'12%',muscle:'52.1 kg'},
+  {id:'P007',name:'Zeynep Arslan',initials:'ZA',color:'#9a7538',age:35,gender:'K',weight:68,height:168,bmi:24.1,program:'saglikli',programLabel:'Sağlıklı Beslenme',status:'tamamlandi',statusLabel:'Tamamlandı',progress:100,since:'1 Eyl 2025',phone:'0507 876 5432',email:'zeynep@mail.com',nextAppt:'—',goal:'Diyet alışkanlığı',bodyFat:'25%',muscle:'40.3 kg'},
+  {id:'P008',name:'Kerem Şahin',initials:'KŞ',color:'#548a48',age:45,gender:'E',weight:95,height:182,bmi:28.7,program:'kilo-verme',programLabel:'Kilo Verme',status:'aktif',statusLabel:'Aktif',progress:40,since:'20 Şub 2026',phone:'0533 456 7890',email:'kerem@mail.com',nextAppt:'22 Mar 2026',goal:'85 kg',bodyFat:'28%',muscle:'63.7 kg'},
+];
+
+let currentView = 'grid';
+let currentPatient = null;
+
+function renderGrid(data) {
+  const grid = document.getElementById('patientsGrid');
+  grid.innerHTML = data.map((p,i) => `
+    <div class="patient-card animate-fade-up delay-${i%4+1}" onclick="openPatient('${p.id}')">
+      <div class="pc-header">
+        <div class="pc-avatar-wrap">
+          <div class="pc-avatar" style="background:${p.color};color:${p.color2||'white'}">${p.initials}</div>
+          ${p.status==='aktif'?'<div class="pc-online-dot"></div>':''}
+        </div>
+        <div style="flex:1;margin-left:12px">
+          <div class="pc-name">${p.name}</div>
+          <div class="pc-id">${p.id} · ${p.age}y ${p.gender}</div>
+        </div>
+        <button class="pc-menu-btn" onclick="event.stopPropagation();showToast('Seçenekler: Düzenle, Arşivle','info')">⋯</button>
+      </div>
+      <div class="pc-stats">
+        <div class="pc-stat"><div class="pc-stat-val">${p.weight}kg</div><div class="pc-stat-lbl">Kilo</div></div>
+        <div class="pc-stat"><div class="pc-stat-val">${p.bmi}</div><div class="pc-stat-lbl">BMI</div></div>
+        <div class="pc-stat"><div class="pc-stat-val">${p.bodyFat}</div><div class="pc-stat-lbl">Yağ %</div></div>
+      </div>
+      <div class="pc-progress-label"><span>Hedef İlerlemesi</span><span style="font-weight:600;color:var(--primary)">${p.progress}%</span></div>
+      <div class="pc-progress-bar"><div class="pc-progress-fill" style="width:${p.progress}%"></div></div>
+      <div class="pc-footer">
+        <div>
+          <span class="badge ${p.status==='aktif'?'badge-green':p.status==='beklemede'?'badge-warn':'badge-bej'}">${p.statusLabel}</span>
+          <span class="badge badge-bej" style="margin-left:4px">${p.programLabel}</span>
+        </div>
+      </div>
+      <div class="pc-next-appt" style="margin-top:10px;font-size:11px">📅 <strong>${p.nextAppt}</strong></div>
+    </div>
+  `).join('');
+}
+
+function renderTable(data) {
+  const tbody = document.getElementById('patientsTbody');
+  tbody.innerHTML = data.map(p => `
+    <tr onclick="openPatient('${p.id}')">
+      <td><div style="display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:36px;border-radius:50%;background:${p.color};color:${p.color2||'white'};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">${p.initials}</div>
+        <div><div style="font-weight:500">${p.name}</div><div style="font-size:11px;color:var(--text-muted)">${p.id}</div></div>
+      </div></td>
+      <td>${p.age}y · ${p.gender}</td>
+      <td><span class="badge badge-green">${p.programLabel}</span></td>
+      <td style="font-size:12px;color:var(--text-muted)">${p.since}</td>
+      <td>${p.weight} kg</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="flex:1;height:5px;background:var(--sage-100);border-radius:99px;overflow:hidden;width:80px"><div style="height:100%;background:var(--primary);width:${p.progress}%"></div></div>
+          <span style="font-size:12px;font-weight:600;color:var(--primary)">${p.progress}%</span>
+        </div>
+      </td>
+      <td><span class="badge ${p.status==='aktif'?'badge-green':p.status==='beklemede'?'badge-warn':'badge-bej'}">${p.statusLabel}</span></td>
+      <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openPatient('${p.id}')">Detay →</button></td>
+    </tr>
+  `).join('');
+}
+
+function setView(view) {
+  currentView = view;
+  document.getElementById('gridViewBtn').classList.toggle('active', view==='grid');
+  document.getElementById('listViewBtn').classList.toggle('active', view==='list');
+  document.getElementById('patientsGrid').style.display = view==='grid' ? 'grid' : 'none';
+  document.getElementById('patientsListWrap').style.display = view==='list' ? 'block' : 'none';
+}
+
+function filterPatients() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const st = document.getElementById('filterStatus').value;
+  const pr = document.getElementById('filterProgram').value;
+  const filtered = patients.filter(p => {
+    const matchQ = !q || p.name.toLowerCase().includes(q) || p.email.includes(q) || p.phone.includes(q);
+    const matchSt = !st || p.status === st;
+    const matchPr = !pr || p.program === pr;
+    return matchQ && matchSt && matchPr;
+  });
+  renderGrid(filtered);
+  renderTable(filtered);
+}
+
+function openPatient(id) {
+  const p = patients.find(x => x.id===id);
+  if (!p) return;
+  currentPatient = p;
+  document.getElementById('modal-avatar').textContent = p.initials;
+  document.getElementById('modal-avatar').style.background = p.color;
+  document.getElementById('modal-avatar').style.color = p.color2||'white';
+  document.getElementById('modal-name').textContent = p.name;
+  document.getElementById('modal-age').textContent = p.age + ' yaş · ' + (p.gender==='K'?'Kadın':'Erkek');
+  document.getElementById('modal-weight').textContent = p.weight + ' kg';
+  document.getElementById('modal-height').textContent = p.height + ' cm';
+  document.getElementById('modal-since').textContent = p.since + '\'den beri';
+  document.getElementById('md-phone').textContent = p.phone;
+  document.getElementById('md-email').textContent = p.email;
+  document.getElementById('md-program').textContent = p.programLabel;
+  document.getElementById('md-next').textContent = p.nextAppt;
+  document.getElementById('md-prog-name').textContent = p.programLabel + ' Programı';
+  document.getElementById('modal-status-badge').textContent = p.statusLabel;
+  document.getElementById('modal-status-badge').className = 'badge ' + (p.status==='aktif'?'badge-green':p.status==='beklemede'?'badge-warn':'badge-bej');
+  document.getElementById('md-goal-bar').innerHTML = `
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:6px">
+      <span>Hedef: ${p.goal}</span><span style="font-weight:600;color:var(--primary)">${p.progress}%</span>
+    </div>
+    <div style="height:8px;background:var(--sage-100);border-radius:99px;overflow:hidden">
+      <div style="height:100%;background:linear-gradient(90deg,var(--primary),var(--sage-400));width:${p.progress}%;transition:width 0.8s"></div>
+    </div>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:6px">${p.progress >= 100 ? '🎉 Hedefe ulaşıldı!' : `Hedefe ${100-p.progress}% kaldı`}</div>
+  `;
+  document.getElementById('md-measures').innerHTML = `
+    <div class="measure-item"><div class="measure-val">${p.weight}<span class="measure-unit"> kg</span></div><div class="measure-lbl">Kilo</div><div class="measure-trend">↓ -2.3</div></div>
+    <div class="measure-item"><div class="measure-val">${p.bmi}</div><div class="measure-lbl">BMI</div><div class="measure-trend">↓ -0.8</div></div>
+    <div class="measure-item"><div class="measure-val">${p.bodyFat}</div><div class="measure-lbl">Yağ %</div><div class="measure-trend">↓ -1.5</div></div>
+    <div class="measure-item"><div class="measure-val">${p.muscle}</div><div class="measure-lbl">Kas Kütlesi</div><div class="measure-trend">↑ +0.4</div></div>
+    <div class="measure-item"><div class="measure-val">${p.height}</div><div class="measure-lbl">Boy (cm)</div></div>
+    <div class="measure-item"><div class="measure-val">${Math.round(p.weight*0.6)}</div><div class="measure-lbl">Su (ml)</div></div>
+  `;
+  switchModalTab(document.querySelector('.modal-tab'), 'genel');
+  document.getElementById('patientModal').classList.add('open');
+  setTimeout(() => {
+    const ctx = document.getElementById('miniWeightChart');
+    if (ctx && !ctx._chart) {
+      ctx._chart = new Chart(ctx.getContext('2d'), {
+        type: 'line',
+        data: {
+          labels: ['Oca','Şub','Mar'],
+          datasets: [{
+            data: [p.weight+2.3, p.weight+1.1, p.weight],
+            borderColor: '#3e6b34',
+            backgroundColor: 'rgba(84,138,72,0.1)',
+            fill: true, tension: 0.4, pointRadius: 4,
+            pointBackgroundColor: '#3e6b34'
+          }]
+        },
+        options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+          scales:{ x:{grid:{display:false},ticks:{font:{size:11},color:'#6b7a65'}}, y:{ticks:{font:{size:10},color:'#6b7a65',callback:v=>v+'kg'},grid:{color:'rgba(0,0,0,0.04)'}} } }
+      });
+    }
+  }, 100);
+}
+
+function closeModal(e) {
+  if (e.target === document.getElementById('patientModal')) closeModalDirect();
+}
+function closeModalDirect() {
+  document.getElementById('patientModal').classList.remove('open');
+}
+
+function switchModalTab(el, tab) {
+  document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  ['genel','olcumler','program','gecmis'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t===tab ? 'block' : 'none';
+  });
+}
+
+function openAddModal() {
+  showToast('Yeni danışan ekleme formu açılıyor...', 'info');
+}
+
+function showToast(msg, type='info') {
+  const icons = {success:'✅',error:'❌',warning:'⚠️',info:'ℹ️'};
+  const cont = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span>${icons[type]}</span><span>${msg}</span>`;
+  cont.appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(20px)'; t.style.transition='0.3s'; setTimeout(()=>t.remove(),300); }, 3000);
+}
+
+// Init
+renderGrid(patients);
+renderTable(patients);
+</script>
+</body>
+</html>
